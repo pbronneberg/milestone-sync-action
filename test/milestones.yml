@@ -1,0 +1,8 @@
+- title: "My first milestone"
+  description: |
+    A multi-line description on what is delivered.
+    It should of course not create illegal YAML characters
+  dueDate: 2024-08-01
+- title: "Next major milestone"
+  description: The next thing to deliver
+  dueDate: 2024-09-01

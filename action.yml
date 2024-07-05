@@ -1,0 +1,49 @@
+# action.yml
+name: "Milestone Sync action"
+description: "Scaffold and update GitHub milestones based on a YAML definition"
+inputs:
+  milestones-file: 
+    description: "Path to the YAML milestones file"
+    required: true
+    default: ".github/milestones.yml"
+  GH_TOKEN:
+    description: "The GitHub Token"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install yq
+      run: sudo snap install yq
+      shell: bash
+
+    - name: Add Github CLI Milestone extension
+      run: gh extension install valeriobelli/gh-milestone
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.GH_TOKEN }}
+
+    - name: Create milestones
+      shell: bash
+      run: |
+        echo The following milestones will be synchronized
+        cat $MILESTONES_FILE | yq eval -o=json -
+        
+        cat $MILESTONES_FILE | yq eval -o=json - | jq -cr '.[]' | while IFS= read -r item; do 
+          title=$(echo "$item" | jq -r '.title')
+          description=$(echo "$item" | jq -r '.description')
+          duedate=$(echo "$item" | jq -r '.dueDate')
+          if [[ -n "$title" && -n "$description" && -n "$duedate" ]]; then
+            queryResult=$(gh milestone list --query "$title" --json number)
+            number=$(echo $queryResult | jq -r '.[].number')
+            if [[ -n "$number" ]]; then
+              echo Updating existing milestone $number : $title
+              gh milestone edit $number --description "$description" --due-date "$duedate"
+            else
+              echo Creating new milestone : $title
+              gh milestone create --title "$title" --description "$description" --due-date "$duedate"
+            fi
+          fi
+        done
+      env:
+        GH_TOKEN: ${{ inputs.GH_TOKEN }}
+        MILESTONES_FILE: ${{ inputs.milestones-file }}
